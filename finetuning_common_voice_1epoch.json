@@ -8,6 +8,8 @@
   "output_dir": "output/wav2vec2-common_voice-lg",
   "overwrite_output_dir": true,
   "num_train_epochs": 1,
+  "report_to":"wandb",
+  "run_name":"sunbird-speech",
   "per_device_eval_batch_size": 2,
   "per_device_train_batch_size": 2,
   "evaluation_strategy": "steps",
