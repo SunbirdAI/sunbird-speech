@@ -14,3 +14,5 @@ node_modules
 .sass-cache
 
 __MACOSX/
+
+.ipynb_checkpoints/
