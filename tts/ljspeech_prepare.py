@@ -184,7 +184,7 @@ def split_sets(data_folder, splits, split_ratio):
 
     data_split = {
           'train': list(range(len(meta_csv))),
-          'valid': list(range(len(meta_csv) - 300, len(meta_csv)))
+          'valid': list(range(len(meta_csv) - 500, len(meta_csv)))
     }
     return data_split, meta_csv
 
