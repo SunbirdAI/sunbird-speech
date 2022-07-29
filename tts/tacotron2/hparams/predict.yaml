@@ -1,0 +1,65 @@
+
+mask_padding: True
+n_mel_channels: 80
+n_symbols: 148
+symbols_embedding_dim: 512
+encoder_kernel_size: 5
+encoder_n_convolutions: 3
+encoder_embedding_dim: 512
+attention_rnn_dim: 1024
+attention_dim: 128
+attention_location_n_filters: 32
+attention_location_kernel_size: 31
+n_frames_per_step: 1
+decoder_rnn_dim: 1024
+prenet_dim: 256
+max_decoder_steps: 1000
+gate_threshold: 0.5
+p_attention_dropout: 0.1
+p_decoder_dropout: 0.1
+postnet_embedding_dim: 512
+postnet_kernel_size: 5
+postnet_n_convolutions: 5
+decoder_no_early_stopping: False
+sample_rate: 22050
+
+# Model
+model: !new:speechbrain.lobes.models.Tacotron2.Tacotron2
+  mask_padding: !ref <mask_padding>
+  n_mel_channels: !ref <n_mel_channels>
+  # symbols
+  n_symbols: !ref <n_symbols>
+  symbols_embedding_dim: !ref <symbols_embedding_dim>
+  # encoder
+  encoder_kernel_size: !ref <encoder_kernel_size>
+  encoder_n_convolutions: !ref <encoder_n_convolutions>
+  encoder_embedding_dim: !ref <encoder_embedding_dim>
+  # attention
+  attention_rnn_dim: !ref <attention_rnn_dim>
+  attention_dim: !ref <attention_dim>
+  # attention location
+  attention_location_n_filters: !ref <attention_location_n_filters>
+  attention_location_kernel_size: !ref <attention_location_kernel_size>
+  # decoder
+  n_frames_per_step: !ref <n_frames_per_step>
+  decoder_rnn_dim: !ref <decoder_rnn_dim>
+  prenet_dim: !ref <prenet_dim>
+  max_decoder_steps: !ref <max_decoder_steps>
+  gate_threshold: !ref <gate_threshold>
+  p_attention_dropout: !ref <p_attention_dropout>
+  p_decoder_dropout: !ref <p_decoder_dropout>
+  # postnet
+  postnet_embedding_dim: !ref <postnet_embedding_dim>
+  postnet_kernel_size: !ref <postnet_kernel_size>
+  postnet_n_convolutions: !ref <postnet_n_convolutions>
+  decoder_no_early_stopping: !ref <decoder_no_early_stopping>
+
+# Function that converts the text into a sequence of valid characters.
+text_to_sequence: !name:speechbrain.utils.text_to_sequence.text_to_sequence
+
+modules:
+    model: !ref <model>
+
+pretrainer: !new:speechbrain.utils.parameter_transfer.Pretrainer
+    loadables:
+        model: !ref <model>
