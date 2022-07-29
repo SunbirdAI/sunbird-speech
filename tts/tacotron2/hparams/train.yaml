@@ -20,6 +20,7 @@ keep_checkpoint_interval: 50
 wandb_id: tacotron2-luganda
 wandb_user: wand_user
 wandb_project: tts-luganda
+init_from_pretrained: False
 
 ###################################
 # Progress Samples                #
@@ -56,7 +57,7 @@ skip_prep: False
 
 # Use the original preprocessing from nvidia
 # The cleaners to be used (applicable to nvidia only)
-text_cleaners: ['english_cleaners']
+text_cleaners: ['transliteration_cleaners']
 
 ################################
 # Audio Parameters             #

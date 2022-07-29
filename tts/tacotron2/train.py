@@ -383,6 +383,13 @@ if __name__ == "__main__":
         checkpointer=hparams["checkpointer"],
     )
 
+    if self.hparams.init_from_pretrained:
+        print('Initialising with pretrained model')
+        pretrained = Tacotron2.from_hparams(
+            source="speechbrain/tts-tacotron2-ljspeech",
+            savedir="tmpdir_tts")
+        tacotron2_brain.mods['model'] = pretrained.mods['model']
+
     # Training
     tacotron2_brain.fit(
         tacotron2_brain.hparams.epoch_counter,
