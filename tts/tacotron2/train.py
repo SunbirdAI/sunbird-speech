@@ -24,6 +24,7 @@ import logging
 from hyperpyyaml import load_hyperpyyaml
 from speechbrain.utils.text_to_sequence import text_to_sequence
 from speechbrain.utils.data_utils import scalarize
+from speechbrain.pretrained import Tacotron2
 
 logger = logging.getLogger(__name__)
 
@@ -383,12 +384,15 @@ if __name__ == "__main__":
         checkpointer=hparams["checkpointer"],
     )
 
-    if self.hparams.init_from_pretrained:
+    if hparams["init_from_pretrained"]:
         print('Initialising with pretrained model')
         pretrained = Tacotron2.from_hparams(
             source="speechbrain/tts-tacotron2-ljspeech",
-            savedir="tmpdir_tts")
-        tacotron2_brain.mods['model'] = pretrained.mods['model']
+            savedir="tmpdir_tts",
+            run_opts=run_opts)
+        tacotron2_brain.modules['model'] = pretrained.mods['model']
+        for p in tacotron2_brain.modules['model'].parameters():
+            p.requires_grad = True
 
     # Training
     tacotron2_brain.fit(
