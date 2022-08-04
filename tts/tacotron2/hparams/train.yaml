@@ -200,8 +200,7 @@ modules:
 
 #optimizer
 opt_class: !name:torch.optim.Adam
-  lr: !ref <learning_rate>
-  weight_decay: !ref <weight_decay>
+  lr: 0
 
 #epoch object
 epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
@@ -219,7 +218,7 @@ train_logger: !new:speechbrain.utils.train_logger.WandBLogger
 
 #annealing_function
 lr_annealing: !new:speechbrain.nnet.schedulers.NoamScheduler
-  lr_initial: 0.001
+  lr_initial: !ref <learning_rate>
   n_warmup_steps: 4000
 
 #checkpointer
