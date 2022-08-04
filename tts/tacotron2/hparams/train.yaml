@@ -218,14 +218,9 @@ train_logger: !new:speechbrain.utils.train_logger.WandBLogger
     resume: allow
 
 #annealing_function
-lr_annealing: !new:speechbrain.nnet.schedulers.IntervalScheduler
-  intervals:
-    - steps: 6000
-      lr: 0.0005
-    - steps: 8000
-      lr: 0.0003
-    - steps: 10000
-      lr: 0.0001
+lr_annealing: !new:speechbrain.nnet.schedulers.NoamScheduler
+  lr_initial: 0.001
+  n_warmup_steps: 4000
 
 #checkpointer
 checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
