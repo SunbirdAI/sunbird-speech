@@ -4,11 +4,8 @@ data/
 # Ignore node_modules folder
 node_modules
 
-# Ignore all text files
-*.txt
-
 # Ignore files related to API keys
-.env
+*.env
 
 # Ignore SASS config files
 .sass-cache
@@ -16,3 +13,6 @@ node_modules
 __MACOSX/
 
 .ipynb_checkpoints/
+
+venv/
+.idea/
