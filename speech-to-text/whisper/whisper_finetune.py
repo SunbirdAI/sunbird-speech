@@ -7,20 +7,9 @@ Original file is located at
     https://colab.research.google.com/drive/1y9vLM4QEPtMsvOl7wcNXk5fepo-jvhfL
 """
 
-!add-apt-repository -y ppa:jonathonf/ffmpeg-4
-!apt update
-!apt install -y ffmpeg
 
-!pip install datasets>=2.6.1 >> /dev/null
-!pip install git+https://github.com/huggingface/transformers >> /dev/null
-!pip install librosa >> /dev/null
-!pip install evaluate>=0.30 >> /dev/null
-!pip install jiwer >> /dev/null
-!pip install gradio >> /dev/null
 
-from huggingface_hub import notebook_login
 
-notebook_login()
 
 from datasets import load_dataset, DatasetDict
 
@@ -67,10 +56,10 @@ def prepare_dataset(batch):
     # load and resample audio data from 48 to 16kHz
     audio = batch["audio"]
 
-    # compute log-Mel input features from input audio array 
+    # compute log-Mel input features from input audio array
     batch["input_features"] = feature_extractor(audio["array"], sampling_rate=audio["sampling_rate"]).input_features[0]
 
-    # encode target text to label ids 
+    # encode target text to label ids
     batch["labels"] = tokenizer(batch["sentence"]).input_ids
     return batch
 
@@ -139,12 +128,12 @@ model.config.suppress_tokens = []
 from transformers import Seq2SeqTrainingArguments
 
 training_args = Seq2SeqTrainingArguments(
-    output_dir="./whisper-small-hi",  # change to a repo name of your choice
+    output_dir="./whisper-small-lg",  # change to a repo name of your choice
     per_device_train_batch_size=16,
     gradient_accumulation_steps=1,  # increase by 2x for every 2x decrease in batch size
     learning_rate=1e-5,
     warmup_steps=500,
-    max_steps=4000,
+    max_steps=10000,
     gradient_checkpointing=True,
     fp16=True,
     evaluation_strategy="steps",
@@ -154,11 +143,11 @@ training_args = Seq2SeqTrainingArguments(
     save_steps=500,
     eval_steps=500,
     logging_steps=25,
-    report_to=["tensorboard"],
     load_best_model_at_end=True,
     metric_for_best_model="wer",
     greater_is_better=False,
-    push_to_hub=False,
+    push_to_hub=True,
+    report_to="wandb"
 )
 
 from transformers import Seq2SeqTrainer
@@ -173,5 +162,19 @@ trainer = Seq2SeqTrainer(
     tokenizer=processor.feature_extractor,
 )
 
-trainer.train()
+kwargs = {
+    "dataset_tags": "mozilla-foundation/common_voice_11_0",
+    "dataset": "Common Voice 11.0",  # a 'pretty' name for the training dataset
+    "dataset_args": "config: lg, split: test",
+    "language": "lg",
+    "model_name": "whisper-small-lg",  # a 'pretty' name for your model
+    "finetuned_from": "openai/whisper-small",
+    "tasks": "automatic-speech-recognition",
+    "tags": "asr",
+}
 
+
+
+
+# trainer.train()
+trainer.push_to_hub(**kwargs)
