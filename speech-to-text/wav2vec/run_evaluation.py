@@ -2,6 +2,10 @@ import torch
 import torchaudio
 from datasets import load_dataset, load_metric
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor, set_seed
+from transformers import WhisperForConditionalGeneration
+from transformers import WhisperProcessor
+from transformers import WhisperTokenizer
+from transformers import WhisperFeatureExtractor
 import argparse
 from pyctcdecode import build_ctcdecoder
 from multiprocessing import Pool
@@ -15,6 +19,11 @@ from datasets import DatasetDict
 from datasets import Dataset
 import pandas as pd
 import unidecode
+from transformers import pipeline
+import numpy as np
+from tqdm import tqdm
+import yaml
+
 
 resampler = torchaudio.transforms.Resample(48_000, 16_000)
 
@@ -85,18 +94,15 @@ def remove_special_characters(batch):
 
 
 def speech_file_to_array_fn(batch):
-    try:
-        speech_array, sampling_rate = torchaudio.load(batch["path"])
-        batch["speech"] = resampler(speech_array).squeeze().numpy()
-        # batch["sampling_rate"] = 16_000
-        # batch["target_text"] = batch["sentence"]
-
-        return batch
-    except Exception as e:
-        print(f"Could not process file {batch['path']}. Error: {str(e)}")
-
-        # batch["speech"] = None
-
+    batch["audio"] = None  # Initialize 'speech' key with default value
+    if batch["path"] is not None:
+        try:
+            speech_array, sampling_rate = torchaudio.load(batch["path"])
+            audio = resampler(speech_array).squeeze().numpy()
+            batch["audio"] = audio
+            return batch
+        except Exception as e:
+            print(f"Could not process file {batch['path']}. Error: {str(e)}")
         return batch
 
 
@@ -146,57 +152,53 @@ def load_datasets(language, dataset_data_dir, label_file_path):
     return train_dataset, test_dataset, eval_dataset
 
 
-def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    language = "luganda"
-    dataset_data_dir = "/home/mila/a/akeraben/scratch/akera/code/sunbird/sunbird-speech/speech-to-text/dataset/data/luganda"
-    label_file_path = "/home/mila/a/akeraben/scratch/akera/code/sunbird/sunbird-speech/speech-to-text/wav2vec/salt-multilingual-audio-transcript.json"
-    model_name = "/home/mila/a/akeraben/scratch/akera/code/sunbird/sunbird-speech/speech-to-text/wav2vec/output/wav2vec2-base-lug"
+def batch_transcribe(test_set, model_name, device, chunk_length_s=30, batch_size=16):
+    asr_pipe = pipeline(
+        "automatic-speech-recognition",
+        model=model_name,
+        chunk_length_s=chunk_length_s,
+        device=device,
+        batch_size=batch_size,
+    )
 
-    wer = load_metric("wer")
-    processor = Wav2Vec2Processor.from_pretrained(model_name)
-    model = Wav2Vec2ForCTC.from_pretrained(model_name)
+    # Process audio clips individually
+    results = []
+    for item in tqdm(test_set, desc="Transcribing"):
+        audio_data = np.array(item["audio"])
+        transcription = asr_pipe(audio_data)
+        results.append(transcription)
+
+    return results
+
+
+def main():
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    language = "acholi"
+    model_type = "whisper"
+    whisper_model = f"akera/whisper-small-{language}"
+    wav2vec_model = "ak3ra/wav2vec2-sunbird-speech-ach"
+    dataset_data_dir = f"/home/mila/a/akeraben/scratch/akera/code/sunbird/sunbird-speech/speech-to-text/dataset/data/{language}"
+    label_file_path = "/home/mila/a/akeraben/scratch/akera/code/sunbird/sunbird-speech/speech-to-text/wav2vec/salt-multilingual-audio-transcript.json"
+
     train_set, test_set, val_set = load_datasets(
         language, dataset_data_dir, label_file_path
     )
     test_set = test_set.map(speech_file_to_array_fn)
     test_set = test_set.map(remove_special_characters)
-    model = model.to(device)
-
-    kenlm = None
-    if kenlm is not None:
-        kenlm = KenLM(processor.tokenizer, "5gram.bin")
-
-    def evaluate(batch):
-        inputs = processor(
-            batch["speech"], sampling_rate=16_000, return_tensors="pt", padding=True
-        )
-
-        with torch.no_grad():
-            logits = model(
-                inputs.input_values.to(device),
-                attention_mask=inputs.attention_mask.to(device),
-            ).logits
-
-        if kenlm:
-            print("Decoding with KenLM")
-            batch["pred_strings"] = kenlm.decode(logits)
-        else:
-            predicted_ids = torch.argmax(logits, dim=-1)
-            batch["pred_strings"] = processor.batch_decode(predicted_ids)
-
-        return batch
-
-    result = test_set.map(evaluate, batched=True, batch_size=16)
-
-    WER = 100 * wer.compute(
-        predictions=result["pred_strings"], references=result["norm_text"]
+    test_set = test_set.filter(
+        lambda example: example["audio"] is not None and example["sentence"] is not None
     )
+
+    wer = load_metric("wer")
+
+    transcriptions = batch_transcribe(test_set, wav2vec_model, device)
+    references = [item["norm_text"] for item in test_set]
+    transcribed_texts = [item["text"] for item in transcriptions]
+
+    WER = 100 * wer.compute(predictions=transcribed_texts, references=references)
+
     print(f"WER: {WER:.2f}%")
-
-    import pdb
-
-    pdb.set_trace()
 
 
 if __name__ == "__main__":
